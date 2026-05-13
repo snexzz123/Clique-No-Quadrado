@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clique no Quadrado - Snexzz</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Segoe UI', 'Poppins', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(4px);
+            border-radius: 48px;
+            padding: 24px 20px 20px 20px;
+            box-shadow: 0 25px 40px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 24px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            cursor: pointer;
+            background-color: #0f172a;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 24px;
+            margin-top: 18px;
+            margin-bottom: 12px;
+            padding: 0 16px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .score-box {
+            background: #0f172a;
+            padding: 8px 24px;
+            border-radius: 60px;
+            color: #facc15;
+            font-weight: bold;
+            font-size: 28px;
+            font-family: monospace;
+            letter-spacing: 2px;
+            box-shadow: inset 0 1px 3px #00000030, 0 6px 12px #00000020;
+        }
+
+        .score-box span {
+            color: #e2e8f0;
+            font-size: 18px;
+            margin-right: 8px;
+        }
+
+        .reset-btn {
+            background: #facc15;
+            border: none;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 6px 24px;
+            border-radius: 60px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: 0.1s linear;
+            color: #0f172a;
+            box-shadow: 0 4px 0 #b45309;
+            transform: translateY(-2px);
+        }
+
+        .reset-btn:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #b45309;
+        }
+
+        .credits {
+            text-align: center;
+            margin-top: 22px;
+            font-size: 16px;
+            background: #0f172a80;
+            backdrop-filter: blur(4px);
+            padding: 8px 16px;
+            border-radius: 60px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .credits a {
+            color: #facc15;
+            text-decoration: none;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+
+        .credits a:hover {
+            text-decoration: underline;
+            color: #ffd966;
+            text-shadow: 0 0 4px #ffb347;
+        }
+
+        footer {
+            text-align: center;
+            font-size: 12px;
+            color: #94a3b8;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+
+<div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="500" height="500"></canvas>
+
+        <div class="info-panel">
+            <div class="score-box">
+                <span>🎯 SCORE</span> <span id="scoreValue">0</span>
+            </div>
+            <button class="reset-btn" id="resetButton">⟳ NOVO JOGO</button>
+        </div>
+
+        <div class="credits">
+            ✨ Made by <a href="https://snexzz-house.netlify.app/" target="_blank" rel="noopener noreferrer">Snexzz</a> ✨
+        </div>
+        <footer>clique rápido no quadrado vermelho ⚡</footer>
+    </div>
+</div>
+
+<script>
+    (function(){
+        // ----- CONFIGURAÇÕES -----
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreSpan = document.getElementById('scoreValue');
+        
+        // Tamanho do canvas (fixo 500x500)
+        const SIZE = 500;
+        // Tamanho do quadrado (fácil de clicar)
+        const SQUARE_SIZE = 70;
+        
+        // Posição inicial do quadrado
+        let squareX = 200;
+        let squareY = 200;
+        let score = 0;
+        
+        // Controle para não múltiplos cliques por frame (mas é útil pra evitar múltiplos clicks no mesmo frame)
+        let canClick = true;
+        
+        // Limites máximos para não ultrapassar o canvas (considerando o tamanho do quadrado)
+        const MAX_X = SIZE - SQUARE_SIZE;
+        const MAX_Y = SIZE - SQUARE_SIZE;
+        
+        // Função para mover o quadrado para uma posição aleatória válida
+        function moveSquareRandom() {
+            let newX = Math.random() * MAX_X;
+            let newY = Math.random() * MAX_Y;
+            // Garantir valores inteiros (opcional, só para ficar mais nítido)
+            squareX = Math.floor(newX);
+            squareY = Math.floor(newY);
+        }
+        
+        // Atualizar a pontuação no HTML
+        function updateScoreUI() {
+            scoreSpan.innerText = score;
+        }
+        
+        // Adicionar ponto e reposicionar quadrado
+        function addPointAndMove() {
+            score++;
+            updateScoreUI();
+            moveSquareRandom();
+            drawGame(); // Redesenha imediatamente
+        }
+        
+        // Reset total do jogo
+        function resetGame() {
+            score = 0;
+            updateScoreUI();
+            // Reposiciona em lugar aleatório também
+            moveSquareRandom();
+            drawGame();
+            canClick = true;
+        }
+        
+        // Função que DESENHA o fundo + quadrado vermelho
+        function drawGame() {
+            ctx.clearRect(0, 0, SIZE, SIZE);
+            
+            // Fundo escuro com grid suave (estilo)
+            ctx.fillStyle = "#0f172a";
+            ctx.fillRect(0, 0, SIZE, SIZE);
+            
+            // Grid fraco pra dar charme
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= SIZE; i += 50) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, SIZE);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(SIZE, i);
+                ctx.stroke();
+            }
+            
+            // --- O QUADRADO VERMELHO (alvo) ---
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = "rgba(220, 38, 38, 0.6)";
+            ctx.fillStyle = "#ef4444";
+            ctx.fillRect(squareX, squareY, SQUARE_SIZE, SQUARE_SIZE);
+            
+            // Borda interna branca neon
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = "#ffb347";
+            ctx.lineWidth = 2.5;
+            ctx.strokeRect(squareX, squareY, SQUARE_SIZE, SQUARE_SIZE);
+            
+            // Detalhe brilho (efeito)
+            ctx.fillStyle = "#ff8c42";
+            ctx.globalAlpha = 0.3;
+            ctx.fillRect(squareX+5, squareY+5, SQUARE_SIZE-10, SQUARE_SIZE-10);
+            ctx.globalAlpha = 1;
+            
+            // Texto opcional dentro do quadrado (opcionalmente "CLIQUE")
+            ctx.font = "bold 14px 'Segoe UI'";
+            ctx.fillStyle = "white";
+            ctx.shadowBlur = 2;
+            ctx.fillText("⚡", squareX + SQUARE_SIZE/2 - 7, squareY + SQUARE_SIZE/2 + 5);
+            ctx.shadowBlur = 0;
+        }
+        
+        // Lógica para detectar se clique está DENTRO do quadrado vermelho
+        function isClickInsideSquare(mouseX, mouseY) {
+            return (mouseX >= squareX && mouseX <= squareX + SQUARE_SIZE &&
+                    mouseY >= squareY && mouseY <= squareY + SQUARE_SIZE);
+        }
+        
+        // Evento de clique no canvas
+        function onCanvasClick(event) {
+            if (!canClick) return;
+            
+            // Obter coordenadas reais do canvas (respeita o tamanho CSS, mas canvas é 500x500 nativo)
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width;   // sempre será 1 se não houver zoom estranho, mas seguro
+            const scaleY = canvas.height / rect.height;
+            
+            let clientX, clientY;
+            if (event.touches) {
+                // Suporte mobile (toque)
+                clientX = event.touches[0].clientX;
+                clientY = event.touches[0].clientY;
+                event.preventDefault();
+            } else {
+                clientX = event.clientX;
+                clientY = event.clientY;
+            }
+            
+            let canvasX = (clientX - rect.left) * scaleX;
+            let canvasY = (clientY - rect.top) * scaleY;
+            
+            // Valida limites
+            if (canvasX >= 0 && canvasX <= SIZE && canvasY >= 0 && canvasY <= SIZE) {
+                if (isClickInsideSquare(canvasX, canvasY)) {
+                    // Acertou!
+                    addPointAndMove();
+                    // Pequeno feedback visual (pisca tela rapidinho)
+                    ctx.fillStyle = "#ffffff30";
+                    ctx.fillRect(0, 0, SIZE, SIZE);
+                    setTimeout(() => drawGame(), 40);
+                } else {
+                    // Errou: pequena animação de erro (opcional, mas divertido)
+                    ctx.fillStyle = "#ff000020";
+                    ctx.fillRect(0, 0, SIZE, SIZE);
+                    setTimeout(() => drawGame(), 80);
+                }
+            }
+        }
+        
+        // Adiciona suporte para mouse e touch
+        canvas.addEventListener('click', onCanvasClick);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const fakeEvent = { clientX: touch.clientX, clientY: touch.clientY };
+            onCanvasClick(fakeEvent);
+        });
+        
+        // Botão reset
+        const resetBtn = document.getElementById('resetButton');
+        resetBtn.addEventListener('click', () => {
+            resetGame();
+        });
+        
+        // Inicializar jogo: posição aleatória + desenho + score 0
+        moveSquareRandom();
+        updateScoreUI();
+        drawGame();
+    })();
+</script>
+</body>
+</html>
